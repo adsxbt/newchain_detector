@@ -201,9 +201,52 @@ The bot includes comprehensive error handling:
 - Graceful shutdown on SIGINT/SIGTERM
 - Automatic error notifications via Telegram
 
+## Production Deployment
+
+For production deployment on Debian 11 with Supervisor, see [deployment/DEPLOYMENT.md](deployment/DEPLOYMENT.md).
+
+### Quick Deployment
+
+```bash
+# Upload project to server
+cd /tmp
+# git clone or scp your project
+
+# Run automated deployment script
+cd newchain-detector
+sudo chmod +x deployment/deploy.sh
+sudo ./deployment/deploy.sh
+
+# Configure credentials
+sudo nano /opt/newchain-detector/.env
+
+# Initialize database
+cd /opt/newchain-detector
+sudo -u newchain npm run init
+
+# Start the bot
+sudo supervisorctl start newchain-detector
+```
+
+### Management Commands
+
+```bash
+# Status
+sudo supervisorctl status newchain-detector
+
+# Restart
+sudo supervisorctl restart newchain-detector
+
+# View logs
+sudo tail -f /var/log/newchain-detector/access.log
+```
+
+For detailed deployment instructions, troubleshooting, and security recommendations, see the [full deployment guide](deployment/DEPLOYMENT.md).
+
 ## Scripts
 
 - `npm run dev` - Run in development mode with ts-node
+- `npm run init` - Initialize database without sending notifications
 - `npm run build` - Compile TypeScript to JavaScript
 - `npm start` - Run the compiled application
 - `npm run watch` - Watch mode for TypeScript compilation

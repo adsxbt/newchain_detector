@@ -67,8 +67,9 @@ rsync -av --exclude 'node_modules' --exclude 'dist' --exclude '.git' --exclude '
 
 echo -e "${YELLOW}[7/10] Installing dependencies and building...${NC}"
 cd "$APP_DIR"
-npm install --production
+npm install
 npm run build
+npm prune --production
 
 echo -e "${YELLOW}[8/10] Setting up environment file...${NC}"
 if [ ! -f "$APP_DIR/.env" ]; then
