@@ -1,0 +1,36 @@
+{
+  "name": "newchain-detector",
+  "version": "1.0.0",
+  "description": "Telegram bot to detect and notify new blockchain chains with database persistence",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "init": "ts-node src/init.ts",
+    "watch": "tsc -w",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "blockchain",
+    "detector",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "node-telegram-bot-api": "^0.64.0",
+    "dotenv": "^16.3.1",
+    "better-sqlite3": "^9.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/node-telegram-bot-api": "^0.64.0",
+    "@types/better-sqlite3": "^7.6.8",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+}

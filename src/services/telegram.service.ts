@@ -1,0 +1,129 @@
+import TelegramBot from 'node-telegram-bot-api';
+import { Chain } from '../types';
+
+/**
+ * Telegram service for sending notifications
+ */
+export class TelegramService {
+  private bot: TelegramBot;
+  private chatId: string;
+
+  constructor(botToken: string, chatId: string) {
+    this.bot = new TelegramBot(botToken, { polling: false });
+    this.chatId = chatId;
+  }
+
+  /**
+   * Send notification about a new chain
+   */
+  async notifyNewChain(chain: Chain): Promise<void> {
+    const message = this.formatChainMessage(chain);
+
+    try {
+      await this.bot.sendMessage(this.chatId, message, {
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      });
+    } catch (error) {
+      throw new Error(`Failed to send Telegram notification: ${error}`);
+    }
+  }
+
+  /**
+   * Send notification about multiple new chains - sends one message per chain
+   */
+  async notifyNewChains(chains: Chain[]): Promise<void> {
+    if (chains.length === 0) {
+      return;
+    }
+
+    // Send a summary first if more than 1 chain
+    if (chains.length > 1) {
+      const summaryMessage = `<b>🚀 ${chains.length} New Chains Detected!</b>\n\nSending details...`;
+      try {
+        await this.bot.sendMessage(this.chatId, summaryMessage, {
+          parse_mode: 'HTML',
+        });
+      } catch (error) {
+        console.error('Failed to send summary message:', error);
+      }
+    }
+
+    // Send one message per chain
+    for (let i = 0; i < chains.length; i++) {
+      try {
+        await this.notifyNewChain(chains[i]);
+
+        // Small delay between messages to avoid rate limiting
+        if (i < chains.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      } catch (error) {
+        console.error(`Failed to send notification for chain ${chains[i].name}:`, error);
+        // Continue with next chain even if one fails
+      }
+    }
+  }
+
+  /**
+   * Format chain data into a readable message
+   */
+  private formatChainMessage(chain: Chain): string {
+    const networkType = chain.mainnet ? '🟢 Mainnet' : '🟡 Testnet';
+    const inboundStatus = chain.inbound ? '✅ Yes' : '❌ No';
+    const explorerLink = chain.explorer ? chain.explorer : 'N/A';
+
+    return `
+<b>🔗 ${chain.name}</b>
+${networkType}
+
+<b>Chain ID:</b> <code>${chain.chain}</code>
+<b>Symbol:</b> ${chain.symbol}
+<b>Price:</b> $${chain.price.toLocaleString()}
+
+<b>Inbound:</b> ${inboundStatus}
+<b>Max Outbound:</b> ${chain.maxOutbound.toLocaleString()}
+<b>Min Outbound:</b> ${chain.minOutbound}
+
+<b>Gas:</b> ${chain.gas}
+<b>Gwei:</b> ${chain.gwei}
+
+<b>Explorer:</b> ${explorerLink}
+<b>RPC:</b> ${chain.rpcs[0] || 'N/A'}
+    `.trim();
+  }
+
+  /**
+   * Send a test message to verify bot is working
+   */
+  async sendTestMessage(): Promise<void> {
+    const message = '✅ NewChain Detector Bot is now active and monitoring for new chains!';
+
+    try {
+      await this.bot.sendMessage(this.chatId, message);
+    } catch (error) {
+      throw new Error(`Failed to send test message: ${error}`);
+    }
+  }
+
+  /**
+   * Send error notification
+   */
+  async notifyError(error: Error): Promise<void> {
+    const message = `
+<b>⚠️ Error Occurred</b>
+
+<code>${error.message}</code>
+
+The bot will continue monitoring...
+    `.trim();
+
+    try {
+      await this.bot.sendMessage(this.chatId, message, {
+        parse_mode: 'HTML',
+      });
+    } catch (err) {
+      console.error('Failed to send error notification:', err);
+    }
+  }
+}
