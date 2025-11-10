@@ -142,6 +142,41 @@ npm start
    - Sends Telegram notifications for new chains
    - Updates existing chain data
 
+## Telegram Commands
+
+The bot supports the following commands via Telegram:
+
+### `/ping`
+Check the bot status and view monitoring statistics:
+- ✅ Bot online status
+- ⏱️ Uptime
+- 📊 Scan interval
+- 🕐 Last scan time
+- ⏰ Next scan countdown
+- 💾 Total chains in database
+- 🌍 Server time
+
+**Example response:**
+```
+🤖 Bot Status
+
+Status: ✅ Online
+Uptime: 2h 15m 30s
+
+📊 Monitoring Info
+Scan interval: 10s
+Last scan: 5s ago
+Next scan in: 5s
+
+💾 Database
+Total chains: 247
+
+⏰ Server time: 2025-11-10T03:15:30.000Z
+```
+
+### `/start`
+Display welcome message and available commands.
+
 ## Database Schema
 
 The SQLite database stores chain information with the following structure:
