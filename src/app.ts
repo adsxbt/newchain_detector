@@ -19,10 +19,14 @@ export class App {
   private config: AppConfig;
   private isRunning = false;
   private pollingInterval?: NodeJS.Timeout;
+  private startTime: Date;
+  private lastScanTime: Date | null = null;
+  private nextScanTime: Date | null = null;
 
   constructor(config: AppConfig) {
     this.config = config;
     this.logger = new LoggerService('App');
+    this.startTime = new Date();
 
     // Initialize services
     this.apiService = new ApiService(config.api.url);
@@ -32,6 +36,28 @@ export class App {
       config.telegram.chatId
     );
     this.chainDetectorService = new ChainDetectorService(this.databaseService);
+
+    // Setup stats callback for Telegram commands
+    this.telegramService.setStatsCallback(() => this.getBotStats());
+  }
+
+  /**
+   * Get bot statistics
+   */
+  private getBotStats() {
+    const now = Date.now();
+    const uptime = Math.floor((now - this.startTime.getTime()) / 1000);
+    const nextScanIn = this.nextScanTime
+      ? Math.max(0, this.nextScanTime.getTime() - now)
+      : this.config.polling.intervalMs;
+
+    return {
+      uptime,
+      lastScanTime: this.lastScanTime,
+      nextScanIn,
+      pollingInterval: this.config.polling.intervalMs,
+      totalChains: this.databaseService.getAllChainIds().size,
+    };
   }
 
   /**
@@ -101,6 +127,9 @@ export class App {
       this.pollingInterval = undefined;
     }
 
+    // Stop Telegram polling
+    this.telegramService.stopPolling();
+
     this.databaseService.close();
     this.isRunning = false;
 
@@ -111,6 +140,9 @@ export class App {
    * Start polling for new chains
    */
   private startPolling(): void {
+    // Set next scan time
+    this.nextScanTime = new Date(Date.now() + this.config.polling.intervalMs);
+
     this.pollingInterval = setInterval(async () => {
       await this.checkForNewChains();
     }, this.config.polling.intervalMs);
@@ -123,12 +155,18 @@ export class App {
     try {
       this.logger.info('Checking for new chains...');
 
+      // Update last scan time
+      this.lastScanTime = new Date();
+
       // Fetch chains from API
       const chains = await this.apiService.fetchChainsWithRetry();
       this.logger.info(`Fetched ${chains.length} chains from API`);
 
       // Process chains and detect new ones
       const newChains = this.chainDetectorService.processChains(chains);
+
+      // Update next scan time
+      this.nextScanTime = new Date(Date.now() + this.config.polling.intervalMs);
 
       // Send notifications for new chains (skip in silent mode)
       if (newChains.length > 0) {

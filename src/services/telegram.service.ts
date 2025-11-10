@@ -2,15 +2,146 @@ import TelegramBot from 'node-telegram-bot-api';
 import { Chain } from '../types';
 
 /**
+ * Bot statistics callback type
+ */
+export type BotStatsCallback = () => {
+  uptime: number;
+  lastScanTime: Date | null;
+  nextScanIn: number;
+  pollingInterval: number;
+  totalChains: number;
+};
+
+/**
  * Telegram service for sending notifications
  */
 export class TelegramService {
   private bot: TelegramBot;
   private chatId: string;
+  private statsCallback?: BotStatsCallback;
 
   constructor(botToken: string, chatId: string) {
-    this.bot = new TelegramBot(botToken, { polling: false });
+    this.bot = new TelegramBot(botToken, { polling: true });
     this.chatId = chatId;
+    this.setupCommands();
+  }
+
+  /**
+   * Set the callback to get bot statistics
+   */
+  setStatsCallback(callback: BotStatsCallback): void {
+    this.statsCallback = callback;
+  }
+
+  /**
+   * Setup bot commands
+   */
+  private setupCommands(): void {
+    // Handle /ping command
+    this.bot.onText(/\/ping/, async (msg) => {
+      if (this.statsCallback) {
+        await this.handlePingCommand(msg);
+      }
+    });
+
+    // Handle /start command
+    this.bot.onText(/\/start/, async (msg) => {
+      await this.handleStartCommand(msg);
+    });
+  }
+
+  /**
+   * Handle /ping command
+   */
+  private async handlePingCommand(msg: TelegramBot.Message): Promise<void> {
+    try {
+      if (!this.statsCallback) {
+        return;
+      }
+
+      const stats = this.statsCallback();
+      const uptimeHours = Math.floor(stats.uptime / 3600);
+      const uptimeMinutes = Math.floor((stats.uptime % 3600) / 60);
+      const uptimeSeconds = Math.floor(stats.uptime % 60);
+
+      const lastScanText = stats.lastScanTime
+        ? `${this.formatTimeAgo(stats.lastScanTime)}`
+        : 'Never';
+
+      const nextScanText = `${Math.floor(stats.nextScanIn / 1000)}s`;
+
+      const message = `
+<b>🤖 Bot Status</b>
+
+<b>Status:</b> ✅ Online
+<b>Uptime:</b> ${uptimeHours}h ${uptimeMinutes}m ${uptimeSeconds}s
+
+<b>📊 Monitoring Info</b>
+<b>Scan interval:</b> ${stats.pollingInterval / 1000}s
+<b>Last scan:</b> ${lastScanText}
+<b>Next scan in:</b> ${nextScanText}
+
+<b>💾 Database</b>
+<b>Total chains:</b> ${stats.totalChains}
+
+<b>⏰ Server time:</b> ${new Date().toISOString()}
+      `.trim();
+
+      await this.bot.sendMessage(msg.chat.id, message, {
+        parse_mode: 'HTML',
+      });
+    } catch (error) {
+      console.error('Error handling /ping command:', error);
+    }
+  }
+
+  /**
+   * Handle /start command
+   */
+  private async handleStartCommand(msg: TelegramBot.Message): Promise<void> {
+    try {
+      const message = `
+<b>👋 Welcome to NewChain Detector!</b>
+
+This bot monitors blockchain chains and notifies you when new chains are detected.
+
+<b>Available commands:</b>
+/ping - Check bot status and statistics
+/start - Show this help message
+
+The bot scans for new chains every 10 seconds and will automatically notify you when changes are detected.
+      `.trim();
+
+      await this.bot.sendMessage(msg.chat.id, message, {
+        parse_mode: 'HTML',
+      });
+    } catch (error) {
+      console.error('Error handling /start command:', error);
+    }
+  }
+
+  /**
+   * Format time ago
+   */
+  private formatTimeAgo(date: Date): string {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+
+    if (seconds < 60) {
+      return `${seconds}s ago`;
+    } else if (seconds < 3600) {
+      return `${Math.floor(seconds / 60)}m ago`;
+    } else if (seconds < 86400) {
+      return `${Math.floor(seconds / 3600)}h ago`;
+    } else {
+      return `${Math.floor(seconds / 86400)}d ago`;
+    }
+  }
+
+  /**
+   * Stop the bot
+   */
+  stopPolling(): void {
+    this.bot.stopPolling();
   }
 
   /**
