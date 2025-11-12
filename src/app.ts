@@ -101,12 +101,6 @@ export class App {
       );
     } catch (error) {
       this.logger.error('Failed to start application', error);
-      // Try to notify error, but don't fail if it doesn't work
-      try {
-        await this.telegramService.notifyError(error as Error);
-      } catch (notifyError) {
-        this.logger.debug('Failed to send error notification:', notifyError);
-      }
       throw error;
     }
   }
@@ -184,11 +178,6 @@ export class App {
       }
     } catch (error) {
       this.logger.error('Error during chain check', error);
-
-      // Skip error notifications in silent mode
-      if (!this.config.silentMode) {
-        await this.telegramService.notifyError(error as Error);
-      }
     }
   }
 }
